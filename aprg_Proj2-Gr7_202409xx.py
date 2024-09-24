@@ -55,6 +55,7 @@ NOTES:
 
 import pyqtgraph as pg
 from pyqtgraph.dockarea import Dock, DockArea
+from GiftWrapper import gift_wrapping_algorithm
 from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
 import pandas as pd
@@ -337,8 +338,8 @@ def quick_run():
     global data, animation_active, animation_timer
 
     p1.clear()
-    p2.clear()
-    p3.clear()
+    # p2.clear()
+    # p3.clear()
 
     # Checks if data had successfully been loaded and whether data processing
     # can commence
@@ -348,35 +349,52 @@ def quick_run():
     # TODO modify according to task - just an example
     # Algorithms will determine the points x, y to be displayed
 
+    # Reading the points out of the data
     x, y = read_values_from_data(data)
+    points = np.column_stack((x, y))
+
+    # Calculating the convex hull with the gift wrapping algorithm
+    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
+
+    # Getting the x- and y coordinates from convex hull
+    hull_x = gift_wrapper_convex_hull[:, 0]
+    hull_y = gift_wrapper_convex_hull[:, 1]
 
     # In order to have animations run one after another (which is necessary
     # if they share the same timer
-    total_duration_p1 = len(x) * animation_interval
-    total_duration_p2 = len(x) * animation_interval
-    total_duration_p1p2 = total_duration_p1 + total_duration_p2
+    # total_duration_p1 = len(hull_x) * animation_interval
+    # total_duration_p2 = len(hull_y) * animation_interval
+    # total_duration_p1p2 = total_duration_p1 + total_duration_p2
 
     try:
-        animation_start(p1, x, y, "Algorithm 1 is used")
+        animation_start(p1, hull_x, hull_y, "Algorithm 1 is used")
     except Exception as e:
         text_label.setText("Error animating algorithm 1, Continuing with next"
                            "algorithm")
         print("Error during animation: " + str(e))
-    try:
-        QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start(
-            p2, x, y, "Algorithm 2 is used"))
-    except Exception as e:
-        text_label.setText("Error animating algorithm 2, Continuing with next"
-                           "algorithm")
-        print("Error during animation: " + str(e))
-    try:
-        QtCore.QTimer.singleShot(total_duration_p1p2, lambda: animation_start(
-            p3, x, y, "Algorithm 3 is used"))
-    except Exception as e:
-        text_label.setText("Error animating algorithm 3")
-        print("Error during animation: " + str(e))
+    # try:
+    #     QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start(
+    #         p2, hull_x, hull_y, "Algorithm 2 is used"))
+    # except Exception as e:
+    #     text_label.setText("Error animating algorithm 2, Continuing with next"
+    #                        "algorithm")
+    #     print("Error during animation: " + str(e))
+    # try:
+    #     QtCore.QTimer.singleShot(total_duration_p1p2, lambda: animation_start(
+    #         p3, x, y, "Algorithm 3 is used"))
+    # except Exception as e:
+    #     text_label.setText("Error animating algorithm 3")
+    #     print("Error during animation: " + str(e))
 
     animation_active = False
+
+def plot_convex_hull(p, points, hull_points):
+    p.clear()
+    for i in range(len(hull_points)):
+        start = hull_points[i]
+        end = hull_points[(i + 1) % len(hull_points)]
+        p.plot([start[0], end[0]], [start[1], end[1]], pen='r')
+    p.plot(points[:, 0], points[:, 1], pen=None, symbol='o')
 
 
 def show_results():
@@ -392,18 +410,19 @@ def show_results():
     # TODO modify according to task - just an example
     # Algorithms will determine the points x, y to be displayed
 
+    # Reading the points out of the data
     x, y = read_values_from_data(data)
+    points = np.column_stack((x, y))
 
     p1.clear()
-    p2.clear()
-    p3.clear()
+    # p2.clear()
+    # p3.clear()
 
-    def plot_all(p, x, y):
-        p.plot(x, y, pen='r', symbol='o', symbolSize=10, symbolBrush='b')
+    # Calculating the convex hull with the gift wrapping algorithm
+    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
 
-    plot_all(p1, x, y)
-    plot_all(p2, x, y)
-    plot_all(p3, x, y)
+    # Plotting the convex hull 
+    plot_convex_hull(p1, points, gift_wrapper_convex_hull)    
 
 
 def step_through():
@@ -415,22 +434,31 @@ def step_through():
     # TODO modify according to task - just an example
     # Algorithms will determine the points x, y to be displayed
 
+    # Reading the points out of the data
     x, y = read_values_from_data(data)
+    points = np.column_stack((x, y))
+
+    # Calculating the convex hull with the gift wrapping algorithm
+    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
+
+    # Getting the x- and y coordinates from convex hull
+    hull_x = gift_wrapper_convex_hull[:, 0]
+    hull_y = gift_wrapper_convex_hull[:, 1]
 
     p1.clear()
-    p2.clear()
-    p3.clear()
+    # p2.clear()
+    # p3.clear()
 
     if current_plot == 1:
         p = p1
-    elif current_plot == 2:
-        p = p2
-    else:
-        p = p3
+    # elif current_plot == 2:
+    #     p = p2
+    # else:
+    #     p = p3
 
-    if step_index < len(x):
-        p.plot(x[:step_index+1], y[:step_index+1], pen='r')
-        p.plot([x[step_index]], [y[step_index]], pen=None, symbol='o',
+    if step_index < len(hull_x):
+        p.plot(hull_x[:step_index+1], hull_y[:step_index+1], pen='r')
+        p.plot([hull_x[step_index]], [hull_y[step_index]], pen=None, symbol='o',
                symbolSize=10, symbolBrush='b')
         step_index += 1
         btn_step.setText("Next Step")
