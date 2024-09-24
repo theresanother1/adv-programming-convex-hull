@@ -103,7 +103,7 @@ btn_reset = pg.QtWidgets.QPushButton('Reset')
 
 # GUI: Program Text
 text_label = QtWidgets.QLabel("Load File")
-text_label.setAlignment(QtCore.Qt.AlignHCenter)
+text_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
 
 # GUI: Layout
 # ## adding text to Widget
