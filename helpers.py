@@ -1,5 +1,6 @@
 import numpy as np
 import Quickhull
+import GiftWrapper
 import Simple_View
 import time
 
@@ -110,8 +111,8 @@ def execute_algo_console():
     while True:
         points = get_points()
 
-        algo = input("Choose your algorithm (Quickhull Q/ ... ):  ").strip().upper()
-        if algo in ['Q', '... ']:
+        algo = input("Choose your algorithm (Quickhull Q/ Gift Wrapper G ):  ").strip().upper()
+        if algo in ['Q', 'G']:
             if algo == 'Q':
                 visu = input("With visualisation? (y/n)  ").strip()
                 if visu == 'y':
@@ -132,5 +133,21 @@ def execute_algo_console():
                     else:
                         break
 
-            if algo == '... ':
-                print("Not implemented yet")
+            if algo == 'G':
+                visu = input("With visualisation? (y/n)  ").strip()
+                if visu == 'y':
+                    print("Use the other File for that!")
+                    # after finished
+                    if continue_or_finish():
+                        continue
+                    else:
+                        break
+
+                if visu == 'n':
+
+                    measure_time(GiftWrapper.gift_wrapping_algorithm, points)
+
+                    if continue_or_finish():
+                        continue
+                    else:
+                        break
