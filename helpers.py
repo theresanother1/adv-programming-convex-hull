@@ -1,15 +1,15 @@
 import numpy as np
-import Quickhull
-import GiftWrapper
-import Simple_View
 import time
+import GiftWrapper
+import Quickhull
 
 
 def generate_random_points(num_points):
-    return np.random.uniform(100, 500, size=(num_points, 2))
+    x = np.random.uniform(size=(num_points, 2))
+    return x
 
 
-def generate_circle(num_points, radius):
+def generate_circle(radius, num_points):
     # Generate points on a circle
     angles = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
     x = radius * np.cos(angles)
@@ -22,13 +22,9 @@ def generate_point(num_points):
     return np.tile([0, 0], (num_points, 1))
 
 
-def generate_square(num_points):
-    points = np.array([])
-    for i in range(num_points):
-        x = (i % 4) * 2 - 1
-        y = (i // 4) * 2 - 1
-        # print(x, y)
-        points = np.append(points, (x, y))
+# generates point within the square of size x
+def generate_square(size, num_points):
+    points = np.random.uniform(-size/2, size/2, (num_points, 2))
     return points
 
 
@@ -39,13 +35,30 @@ def generate_line(num_points):
     return np.column_stack((x, y))
 
 
-def generate_point_file(num_points, output_file):
+def generate_random_point_file(num_points, output_file):
     with open(output_file, 'w') as f:
         f.write(f"{num_points}\n")
         for _ in range(num_points):
             x = np.random.uniform(-100.0, 100.0)
             y = np.random.uniform(-100.0, 100.0)
             f.write(f"{x:.6f}, {y:.6f}\n")
+
+
+def generate_file_from_specific_form(output_file, function, num_points, size):
+    with open(output_file, 'w') as f:
+        f.write(f"{num_points}\n")
+        points = function(size, num_points)
+        for point in points:
+            f.write(f"{point[0]:.6f}, {point[1]:.6f}\n")
+
+
+def generate_file_from_specific_form_one_argument(output_file, function, num_points):
+    with open(output_file, 'w') as f:
+        f.write(f"{num_points}\n")
+        points = function(num_points)
+        print(points)
+        for i in range(num_points):
+            f.write(f"{points[0]:.6f}, {points[1]:.6f}\n")
 
 
 def read_points_from_file(filename):
@@ -60,25 +73,21 @@ def read_points_from_file(filename):
     return points
 
 
-def run_quickhull_with_visu(points: np.ndarray):
-    win = init_window_and_draw_points(points)
-    win.getMouse()
-    chResult = Quickhull.convex_hull_visu(points, win)
-    print(chResult)
-
-
-def init_window_and_draw_points(points: np.ndarray):
-    x, y = Quickhull.get_min_max(points)
-    win = Simple_View.init_window(x, y)
-    Simple_View.draw_points_init(points, win)
-    return win
+def all_points_on_line(x: np.ndarray, y: np.ndarray):
+    x_size = np.unique(x).size
+    y_size = np.unique(y).size
+    if x_size == 1 or y_size == 1:
+        return True
+    else:
+        return False
 
 
 def measure_time(func, points):
     start_time = time.perf_counter()
-    func(points)
+    hull = func(points)
     end_time = time.perf_counter()
-    print("Elapsed time in secs: ", end_time - start_time)
+    print(f"Executed algorithm in {(end_time - start_time)} seconds.")
+    return (end_time - start_time), hull
 
 
 def continue_or_finish():
@@ -90,7 +99,7 @@ def continue_or_finish():
 
 
 def get_points():
-    user_input = input("Read in file or generate random (R/G):  ").strip().upper()
+    user_input = input("Read in file or generate random (Read File F, Generate Random R, Circle C, Square S, Line L, Point P):  ").strip().upper()
     if user_input in ['R', 'G']:
 
         if user_input == 'R':
@@ -102,21 +111,32 @@ def get_points():
                 print("Could not read file.  ")
 
         if user_input == 'G':
-            user_input = int(input("How many points?  "))
-            if user_input >= 0:
-                return generate_random_points(user_input)
+            points_amount = int(input("How many points?  "))
+            if points_amount >= 0:
+                form = input(
+                    "What form? (Circle C, Square S, Line L, Point P, Random R): ").strip().upper()
+                if form == 'C':
+                    radius = int(input("Determine radius in positive number: "))
+                    return generate_circle(points_amount, abs(radius))
+                elif form == 'S':
+                    return generate_square(points_amount)
+                elif form == 'L':
+                    return generate_line(points_amount)
+                elif form == 'P':
+                    return generate_point(points_amount)
+                elif form == 'R':
+                    return generate_random_points(points_amount)
 
 
-def execute_algo_console():
+def execute_algo_console(points):
     while True:
-        points = get_points()
-
-        algo = input("Choose your algorithm (Quickhull Q/ Gift Wrapper G ):  ").strip().upper()
-        if algo in ['Q', 'G']:
-            if algo == 'Q':
-                visu = input("With visualisation? (y/n)  ").strip()
-                if visu == 'y':
-                    run_quickhull_with_visu(points)
+        if points is not None:
+            #points = get_points()
+            algo = input("Choose your algorithm (Quickhull Q/ Gift Wrapper G ):  ").strip().upper()
+            if algo in ['Q', 'G']:
+                if algo == 'Q':
+                    print(f"starting quickhull calculation for {points.shape[0]} points .... ")
+                    measure_time(Quickhull.quick_hull, points)
 
                     # after finished
                     if continue_or_finish():
@@ -124,27 +144,8 @@ def execute_algo_console():
                     else:
                         break
 
-                if visu == 'n':
-
-                    measure_time(Quickhull.convex_hull_fast, points)
-
-                    if continue_or_finish():
-                        continue
-                    else:
-                        break
-
-            if algo == 'G':
-                visu = input("With visualisation? (y/n)  ").strip()
-                if visu == 'y':
-                    print("Use the other File for that!")
-                    # after finished
-                    if continue_or_finish():
-                        continue
-                    else:
-                        break
-
-                if visu == 'n':
-
+                if algo == 'G':
+                    print(f"starting giftwrapper calculation for {points.shape[0]} points .... ")
                     measure_time(GiftWrapper.gift_wrapping_algorithm, points)
 
                     if continue_or_finish():

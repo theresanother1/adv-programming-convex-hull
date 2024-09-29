@@ -41,7 +41,7 @@ def orientation(p, q, r):
 
 def gift_wrapping_algorithm(points):
 
-    
+    # Todo: füg den ersten punkt noch als letzten punkt ein, damit die hülle komplett ist
     # Checking if the Array is empty
     if points.size == 0:
         raise ValueError("The point cloud is empty")

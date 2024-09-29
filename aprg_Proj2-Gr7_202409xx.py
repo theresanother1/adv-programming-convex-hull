@@ -18,7 +18,7 @@ GUI:
     ||                          ||                               |
     ||                          ||_______________________________|
     ||                          |____________ d3 ________________|
-    || p3 (plot)    p4 (plot)   ||                               |
+    ||                          ||                               |
     ||                          ||                               |
     ||                          ||          (Text)               |
     ||                          ||                               |
@@ -27,13 +27,10 @@ GUI:
 
 USER INTERACTIONS:
 
-    - p1 shows the data being processed with alogrithm A
-    - p2 shows the data being processed with alogrithm B
-    - p3 shows the data being processed with alogrithm C
-    - p1, p2 and p3 run one after another so execution time measurements and
+    - p1 shows the data being processed with Giftwrapper
+    - p2 shows the data being processed with Quickhull
+    - p1 and p2 run one after another so execution time measurements and
       the comparison of numbers of steps can be performed
-    - p4 shows the data from the input file. It is being updated every time
-      the "Load Data"-button is pressed
     - the reset button clears the animation plots and stops any ongoing
       animation
 
@@ -45,21 +42,23 @@ NOTES:
       relies on "native" pyqtgraph only for visualisations and user
       interactions without relying on PyQt5 or QtGui imports. Pyqtgraph is
       typically bundled with PySide (2 and 6)
-    - For better managability and ease of debugging  the choice was made to
+    - For better manageability and ease of debugging  the choice was made to
       organise the code in such a way that pyqtgraph is only needed to be
       imported in one single file, and all actions related to the use of that
       library are handled in one place. As the program makes use of Event
       Buttons, the file was chosen to be where the main loop runs.
 
 '''
-
+import time
 import pyqtgraph as pg
 from pyqtgraph.dockarea import Dock, DockArea
+import logging
+import helpers
 from GiftWrapper import gift_wrapping_algorithm
+import Quickhull
 from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
 import pandas as pd
-
 
 # ************************* GLOBAL VARIABLES ******************************** #
 
@@ -70,11 +69,11 @@ import pandas as pd
 # GUI: Main Window, Areas
 app = pg.mkQApp("APRG Task 2, Group 7")
 area = DockArea()
-area.resize(1200, 600)
-area.setWindowTitle("Convexe Hull - Group 7")
+area.resize(1600, 600)
+area.setWindowTitle("Convex Hull - Group 7")
 
 # GUI: Docks
-d1 = Dock("Plots", size=(800, 600))
+d1 = Dock("Plots", size=(1200, 600))
 d2 = Dock("Control Panel", size=(400, 300))
 d3 = Dock("Info-Panel", size=(400, 300))
 
@@ -90,33 +89,49 @@ info_container = QtWidgets.QWidget()
 info_layout = QtWidgets.QVBoxLayout()
 
 # GUI: Plots
-p1 = plots_panel.addPlot(row=0, col=0, title="Plot 1")
-p2 = plots_panel.addPlot(row=0, col=1, title="Plot 2")
-p3 = plots_panel.addPlot(row=1, col=0, title="Plot 3")
-p4 = plots_panel.addPlot(row=1, col=1, title="Plot 4")
+p1 = plots_panel.addPlot(row=0, col=0, title="Gift Wrapper")
+p2 = plots_panel.addPlot(row=0, col=1, title="Quickhull")
+
+# @Salome das hier hat nur das fenster komisch am bildschirm verschoben, daher auskommentiert
+#plots_panel.ci.layout.setColumnStretchFactor(1, 0)
+#plots_panel.ci.layout.setColumnStretchFactor(1, 1)
 
 # GUI: Buttons
 btn_loadData = pg.QtWidgets.QPushButton('Load New Data')
+btn_generateData = pg.QtWidgets.QPushButton('Generate Random Data')
 btn_step = pg.QtWidgets.QPushButton('Step Through')
 btn_result = pg.QtWidgets.QPushButton('Show Result')
 btn_run = pg.QtWidgets.QPushButton('Quick Run')
 btn_reset = pg.QtWidgets.QPushButton('Reset')
+text_amount = pg.QtWidgets.QLineEdit()
+text_amount.setPlaceholderText('Enter a value')  # Set a placeholder text
 
 # GUI: Program Text
-text_label = QtWidgets.QLabel("Load File")
+text_label = QtWidgets.QLabel("Load File or generate random points")
+additional_info_quickhull = QtWidgets.QLabel("")
+additional_info_giftwrapper = QtWidgets.QLabel("")
 text_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+additional_info_quickhull.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+additional_info_giftwrapper.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+text_label.setWordWrap(True)
+additional_info_quickhull.setWordWrap(True)
+additional_info_giftwrapper.setWordWrap(True)
 
 # GUI: Layout
 # ## adding text to Widget
 info_layout.addStretch()
 info_layout.addWidget(text_label)
+info_layout.addWidget(additional_info_quickhull)
+info_layout.addWidget(additional_info_giftwrapper)
 info_layout.addStretch()
 info_container.setLayout(info_layout)
 # ## adding Buttons to a Widget
-control_panel.addWidget(btn_loadData, row=0, col=1)
+control_panel.addWidget(btn_loadData, row=0, col=0)
+control_panel.addWidget(btn_run, row=0, col=1)
+control_panel.addWidget(text_amount, row=0, col=2)
 control_panel.addWidget(btn_step, row=1, col=0)
 control_panel.addWidget(btn_result, row=1, col=1)
-control_panel.addWidget(btn_run, row=1, col=2)
+control_panel.addWidget(btn_generateData, row=1, col=2)
 control_panel.addWidget(btn_reset, row=3, col=1)
 control_layout.addWidget(control_panel)
 control_container.setLayout(control_layout)
@@ -139,6 +154,7 @@ button_style = """
         border-radius:30px;
         padding:20px 10px;
         min-height: 40px;
+        width: 130px; 
     }
     QPushButton:hover {
         background-color: #e56a89;
@@ -147,7 +163,20 @@ button_style = """
         background-color: #b32d5e;
     }
 """
+
+styleTextEntry = """
+    QLineEdit {
+        font-size: 16 px;
+        border-radius: 30px;
+        padding: 20px 10px;
+        width: 130px; 
+        min-height: 30px;   
+        background-color: white;
+    }
+"""
+text_amount.setStyleSheet(styleTextEntry)
 btn_loadData.setStyleSheet(button_style)
+btn_generateData.setStyleSheet(button_style)
 btn_step.setStyleSheet(button_style)
 btn_result.setStyleSheet(button_style)
 btn_run.setStyleSheet(button_style)
@@ -156,6 +185,12 @@ control_container.setStyleSheet("background-color: black;")
 info_container.setStyleSheet("background-color: black;")
 text_label.setStyleSheet("color: white; font-size:16px")
 
+# global variables for quickhull algo step throug
+steps_quickhull_upper = np.array([])
+steps_quickhull_lower = np.array([])
+steps_quickhull = []
+steps_giftwrapper = np.array([])
+quickhull_hull = np.array([])
 
 #######################
 # DATA HANDLING
@@ -164,9 +199,11 @@ text_label.setStyleSheet("color: white; font-size:16px")
 data = None
 animation_timer = None
 animation_active = False
-animation_interval = 200 # Animation steps speed in ms
+animation_interval = 200  # Animation steps speed in ms
 step_index = 0
-current_plot = 1    # tracking for step through functionality
+step_index_plot2 = 0
+current_plot = 1  # tracking for step through functionality
+points_amount = 0
 
 # Initialisation of the buttons (states at program start)
 btn_step.setEnabled(False)
@@ -188,22 +225,28 @@ btn_reset.setEnabled(False)
 
 
 def clear_all_plots():
-
     p1.clear()
     p2.clear()
-    p3.clear()
-    p4.clear()
+
+
+def plot_points(x, y):
+    p1.plot(x, y, pen=None, symbol='o')
+    p2.plot(x, y, pen=None, symbol='o')
 
 
 def reset_plots():
-    global step_index, animation_active
+    global step_index, animation_active, current_plot, step_index_plot2, current_plot, steps_quickhull
 
     p1.clear()
     p2.clear()
-    p3.clear()
+
+    # replot points
+    x, y = read_values_from_data(data)
+    if x.size < 100:
+        plot_points(x, y)
 
     animation_active = False
-    step_index = 0
+    reset_data()
 
     if animation_timer is not None and animation_timer.isActive():
         animation_timer.stop()
@@ -220,8 +263,10 @@ def reset_plots():
         btn_run.setEnabled(False)
 
     btn_loadData.setEnabled(True)
+    btn_generateData.setEnabled(True)
 
     text_label.setText("Plots are cleared, Input Data is still shown")
+
 
 ######################
 # DATA HANDLING
@@ -234,18 +279,11 @@ def load_data():
 
     text_label.setText("Select Data")
     file_dialog = QtWidgets.QFileDialog()
-    file_name, _ = file_dialog.getOpenFileName(None, "Select Data File", "",
-                                               "*.csv or *.txt")
+    file_name, _ = file_dialog.getOpenFileName(None, "Select Data File *.txt", )
 
     if file_name:
         try:
-            # TODO adapt text parsing - just an example
-            if file_name.endswith('.csv'):
-                data = pd.read_csv(file_name)
-            elif file_name.endswith('.txt'):
-                data = pd.read_csv(file_name, delimiter=';', header=None,
-                                   names=['x', 'y'])
-            return data
+            return helpers.read_points_from_file(file_name)
         except Exception as e:
             text_label.setText("Failed to load file: " + str(e) + "Load again")
             return None
@@ -260,12 +298,12 @@ def load_data():
     return None
 
 
-# PREPROCESS DATA FROM SOURCE FILE # TODO adapt text parsing - just an example
+# PREPROCESS DATA FROM SOURCE FILE
 def read_values_from_data(data):
     if data is not None:
         try:
-            x = data['x'].values
-            y = data['y'].values
+            x = data[:, 0]
+            y = data[:, 1]
             return x, y
         except Exception as e:
             text_label.setText("Error extracting 'x' and 'y' values: "
@@ -276,28 +314,73 @@ def read_values_from_data(data):
         return None, None
 
 
-# PLOTTING DATA FOR PLOT 4 # TODO adapt - just an example
-def plotting_p4():
-    global animation_active
+# PLOTTING DATA FOR PLOT 4
+def plotting():
+    global animation_active, data
+    reset_data()
     data = load_data()
     x, y = read_values_from_data(data)
 
     clear_all_plots()
 
     if x is not None and y is not None:
-        p4.plot(x, y, pen=None, symbol='o')
-        text_label.setText("You can load new data or run the algorithms")
+        update_plot_after_generating(x, y)
+    else:
+        disable_algo_relevant_buttons()
+
+    btn_loadData.setEnabled(True)
+    btn_generateData.setEnabled(True)
+    animation_active = False
+
+
+def reset_data():
+    global current_plot, steps_quickhull, step_index, step_index_plot2
+    current_plot = 1
+    steps_quickhull = []
+    step_index = 0
+    step_index_plot2 = 0
+
+
+def update_plot_after_generating(x, y):
+    if x.size <= 100:
+        plot_points(x, y)
+        text_label.setText("Generated points. You can load new data or run the algorithms")
         btn_step.setEnabled(True)
         btn_result.setEnabled(True)
         btn_run.setEnabled(True)
         btn_reset.setEnabled(True)
+    if x.size > 100:
+        text_label.setText("Generated points. Not plotted - too many points.")
+        btn_result.setEnabled(True)
+        btn_reset.setEnabled(True)
+
+
+def disable_algo_relevant_buttons():
+    btn_step.setEnabled(False)
+    btn_result.setEnabled(False)
+    btn_run.setEnabled(False)
+    btn_reset.setEnabled(False)
+
+
+# Plotting plot 4 based on random data
+def plotting_random():
+    global animation_active, data, current_plot, step_index, step_index_plot2
+    reset_data()
+
+    points_amount = text_amount.text()
+    data = helpers.generate_random_points(int(points_amount))
+    clear_all_plots()
+
+    x, y = read_values_from_data(data)
+
+    if x is not None and y is not None:
+        update_plot_after_generating(x, y)
+
     else:
-        btn_step.setEnabled(False)
-        btn_result.setEnabled(False)
-        btn_run.setEnabled(False)
-        btn_reset.setEnabled(False)
+        disable_algo_relevant_buttons()
 
     btn_loadData.setEnabled(True)
+    btn_generateData.setEnabled(True)
     animation_active = False
 
 
@@ -306,14 +389,15 @@ def plotting_p4():
 def update_curve(p, x, y, i):
     global animation_active, animation_timer
     if i < len(x):
-        p.plot(x[:i+1], y[:i+1], pen='r')
+        p.plot(x[:i + 1], y[:i + 1], pen='r')
         p.plot([x[i]], [y[i]], pen=None, symbol='o', symbolSize=10,
-               symbolBrush='b')
+               symbolBrush='g')
         animation_timer.i += 1
     else:
         animation_timer.stop()
         animation_active = False
         btn_loadData.setEnabled(True)
+        btn_generateData.setEnabled(True)
 
 
 def animation_start(p, x, y, text):
@@ -338,13 +422,15 @@ def quick_run():
     global data, animation_active, animation_timer
 
     p1.clear()
-    # p2.clear()
-    # p3.clear()
+    p2.clear()
 
     # Checks if data had successfully been loaded and whether data processing
     # can commence
     if data is None or animation_active:
         return
+
+    # Tinko: Todo add step through functionality for quick run
+    # Tsp: Todo add step through functionality for quick run
 
     # TODO modify according to task - just an example
     # Algorithms will determine the points x, y to be displayed
@@ -352,41 +438,42 @@ def quick_run():
     # Reading the points out of the data
     x, y = read_values_from_data(data)
     points = np.column_stack((x, y))
+    plot_points(x, y)
 
     # Calculating the convex hull with the gift wrapping algorithm
     gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
-
+    print("giftwrapper hull")
+    print(gift_wrapper_convex_hull)
     # Getting the x- and y coordinates from convex hull
-    hull_x = gift_wrapper_convex_hull[:, 0]
-    hull_y = gift_wrapper_convex_hull[:, 1]
+    hull_x_g = gift_wrapper_convex_hull[:, 0]
+    hull_y_g = gift_wrapper_convex_hull[:, 1]
+
+    convex_hull_quickhull = np.array(Quickhull.quick_hull(points))
+    print("quickhull")
+    print(convex_hull_quickhull)
+
+    hull_x_q = convex_hull_quickhull[:, 0]
+    hull_y_q = convex_hull_quickhull[:, 1]
 
     # In order to have animations run one after another (which is necessary
     # if they share the same timer
-    # total_duration_p1 = len(hull_x) * animation_interval
-    # total_duration_p2 = len(hull_y) * animation_interval
-    # total_duration_p1p2 = total_duration_p1 + total_duration_p2
+    total_duration_p1 = (len(hull_x_g) * 2) * animation_interval
 
     try:
-        animation_start(p1, hull_x, hull_y, "Algorithm 1 is used")
+        animation_start(p1, hull_x_g, hull_y_g, "Giftwrapper is executed")
     except Exception as e:
-        text_label.setText("Error animating algorithm 1, Continuing with next"
+        text_label.setText("Error animating Giftwrapper, Continuing with next"
                            "algorithm")
         print("Error during animation: " + str(e))
-    # try:
-    #     QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start(
-    #         p2, hull_x, hull_y, "Algorithm 2 is used"))
-    # except Exception as e:
-    #     text_label.setText("Error animating algorithm 2, Continuing with next"
-    #                        "algorithm")
-    #     print("Error during animation: " + str(e))
-    # try:
-    #     QtCore.QTimer.singleShot(total_duration_p1p2, lambda: animation_start(
-    #         p3, x, y, "Algorithm 3 is used"))
-    # except Exception as e:
-    #     text_label.setText("Error animating algorithm 3")
-    #     print("Error during animation: " + str(e))
+    try:
+        QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start(
+            p2, hull_x_q, hull_y_q, "Quickhull is executed"))
+    except Exception as e:
+        text_label.setText("Error animating Quickhull")
+        print("Error during animation: " + str(e))
 
     animation_active = False
+
 
 def plot_convex_hull(p, points, hull_points):
     p.clear()
@@ -403,82 +490,182 @@ def show_results():
     if data is None:
         return
 
-    text_label.setText("Showing results with \nAlgorithm 1 (top left), \n"
-                       "Algorithm 2 (top right) and \n"
-                       "Algorithm 3 (bottom left)")
-
-    # TODO modify according to task - just an example
-    # Algorithms will determine the points x, y to be displayed
+    text_label.setText("Calculating results .... ")
 
     # Reading the points out of the data
     x, y = read_values_from_data(data)
+
     points = np.column_stack((x, y))
 
     p1.clear()
-    # p2.clear()
-    # p3.clear()
+    p2.clear()
+
+    # Show results for both algorithms --> run both algorithms
+    # Todo: potentiell updaten für längere laufzeiten - das was angezeigt wird?
+    # Todo: hull punkte, wenn es welche gibt anzeigen?
+
 
     # Calculating the convex hull with the gift wrapping algorithm
-    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
+    print("Start calculate giftwrapper.")
+    time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
+    print("Finished calculate giftwrapper.")
 
-    # Plotting the convex hull 
-    plot_convex_hull(p1, points, gift_wrapper_convex_hull)    
+    # Calculating the convex hull with the quickhull wrapping algorithm
+    print("Start calculate quickhull.")
+    time_q, convex_hull_quickhull = helpers.measure_time(Quickhull.quick_hull, points)
+    print("Finished calculate quickhull.")
+
+    if not convex_hull_quickhull:
+        # Todo: textfeld leider nicht angezeigt
+        print("calculate Hull with quickhull not possible ")
+        additional_info_quickhull.setText("Cannot calculate quickhull convex hull with given data")
+
+    # Plotting the convex hull only for values smaller 100
+    if x.size < 100:
+        plot_convex_hull(p1, points, gift_wrapper_convex_hull)
+        plot_convex_hull(p2, points, convex_hull_quickhull)
+        text_label.setText(f"\nGift Wrapper time:  {time_g} secs\n"
+                           f"Quickhull Time:  {time_q} secs ")
+    else:
+        text_label.setText(f"\nNo data points plotted - too many points to plot\n"
+                           f"\nGift Wrapper time:  {time_g} secs\n"
+                           f"Quickhull Time:  {time_q} secs ")
+
+
+def repaint_line_step(a_x, a_y, p, only_points):
+    index = 0
+    print("printing lines ")
+    while index < len(a_x):
+        if only_points:
+            p.plot(a_x[:index + 1], a_y[:index + 1], symbol='o',
+                   symbolSize=10, symbolBrush='g')
+        else:
+            p.plot(a_x[:index + 1], a_y[:index + 1], pen='r', symbol='o',
+                   symbolSize=10, symbolBrush='g')
+        index += 1
+
+
+def reset_paint_step(og_x, og_y, p):
+    print("reset plot ")
+    p.clear()
+    p.plot(og_x, og_y, pen=None, symbol='o')
+
+
+# almost the same as plot_current_step, split for readability!
+def revert_previous_step(p, steps, index):
+    previous_step = np.array(steps[index - 1])
+    hull_prev_x = previous_step[:, 0]
+    hull_prev_y = previous_step[:, 1]
+    repaint_line_step(hull_prev_x, hull_prev_y, p, True)
+
+
+def plot_current_step(p, steps, index):
+    current_step = np.array(steps[index])
+    hull_x_step = current_step[:, 0]
+    hull_y_step = current_step[:, 1]
+    repaint_line_step(hull_x_step, hull_y_step, p, False)
 
 
 def step_through():
-    global step_index, current_plot, data
+    global step_index, current_plot, data, steps_quickhull_upper, step_index_plot2, quickhull_hull, \
+        steps_quickhull_lower, steps_quickhull, steps_giftwrapper
 
     if data is None:
         return
 
-    # TODO modify according to task - just an example
-    # Algorithms will determine the points x, y to be displayed
-
     # Reading the points out of the data
     x, y = read_values_from_data(data)
     points = np.column_stack((x, y))
 
-    # Calculating the convex hull with the gift wrapping algorithm
-    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
-
-    # Getting the x- and y coordinates from convex hull
-    hull_x = gift_wrapper_convex_hull[:, 0]
-    hull_y = gift_wrapper_convex_hull[:, 1]
-
-    p1.clear()
+    # p1.clear()
     # p2.clear()
     # p3.clear()
-
     if current_plot == 1:
         p = p1
-    # elif current_plot == 2:
-    #     p = p2
-    # else:
-    #     p = p3
+    if current_plot == 2:
+        p = p2
 
-    if step_index < len(hull_x):
-        p.plot(hull_x[:step_index+1], hull_y[:step_index+1], pen='r')
+    print("Current plot is: ", current_plot)
+
+    if current_plot == 1 and step_index == 0:
+        print("initialising plot p1")
+
+        # Tinko: TODO add function that saves all inbetween states  to plot
+
+        # Calculating the convex hull with the gift wrapping algorithm
+        steps_giftwrapper = gift_wrapping_algorithm(points)
+        step_index += 1
+
+        # Getting the x- and y coordinates from convex hull
+        hull_x = steps_giftwrapper[:, 0]
+        hull_y = steps_giftwrapper[:, 1]
+
+    elif current_plot == 1 and step_index < len(steps_giftwrapper[:, 0]):
+        hull_x = steps_giftwrapper[:, 0]
+        hull_y = steps_giftwrapper[:, 1]
+        print("plot p1")
+        p.plot(hull_x[:step_index + 1], hull_y[:step_index + 1], pen='r')
         p.plot([hull_x[step_index]], [hull_y[step_index]], pen=None, symbol='o',
                symbolSize=10, symbolBrush='b')
         step_index += 1
         btn_step.setText("Next Step")
         text_label.setText(str(step_index) + " points connected")
+        step_index += 1
+
+    elif current_plot == 1 and step_index == len(steps_giftwrapper[:, 0]):
+        print("next plot")
+        current_plot += 1
+
+    elif current_plot == 2 and step_index_plot2 == 0:
+        print("get vals for step through")
+        quickhull_hull, upper, lower = Quickhull.quick_hull_step_through(points)
+        steps_quickhull_upper = dict(sorted(upper.items()))
+        steps_quickhull_lower = dict(sorted(lower.items()))
+        list_results = []
+        list_results.extend(steps_quickhull_upper.values())
+        list_results.extend(steps_quickhull_lower.values())
+        steps_quickhull = list_results
+        step_index_plot2 += 1
+
+    elif current_plot == 2 and 0 <= step_index_plot2 < len(steps_quickhull):
+        print("plot p2")
+        if step_index_plot2 > 0:
+            revert_previous_step(p, steps_quickhull, step_index_plot2)
+
+        plot_current_step(p, steps_quickhull, step_index_plot2)
+        step_index_plot2 += 1
+
+    elif current_plot == 2 and step_index_plot2 == len(steps_quickhull):
+        print("plot hull in p2")
+        quickhull_hull = np.array(quickhull_hull)
+        hull_x_step = quickhull_hull[:, 0]
+        hull_y_step = quickhull_hull[:, 1]
+        reset_paint_step(x, y, p)
+        repaint_line_step(hull_x_step, hull_y_step, p, False)
+
     else:
+        print("getting into else ")
         if current_plot < 3:
             current_plot += 1
             step_index = 0
+            step_index_plot2 = 0
             text_label.setText("Continuing with the next algorithm")
         else:
             btn_step.setText("Step Through")
             text_label.setText("Step Through is completed")
+            current_plot = 1
+            step_index = 0
+            step_index_plot2 = 0
             btn_loadData.setEnabled(True)
+            btn_generateData.setEnabled(True)
 
 
 ###########################
 # UI EVENT BUTTON HANDLING
 ###########################
 
-btn_loadData.clicked.connect(plotting_p4)
+btn_loadData.clicked.connect(plotting)
+btn_generateData.clicked.connect(plotting_random)
 btn_run.clicked.connect(quick_run)
 btn_result.clicked.connect(show_results)
 btn_step.clicked.connect(step_through)
