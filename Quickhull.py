@@ -1,6 +1,7 @@
 import numpy as np
 import helpers
 
+step_upper = 0
 
 def quick_hull(points: np.ndarray):
     convex_hull = []
@@ -43,6 +44,7 @@ def find_hull(points: np.ndarray, left: np.ndarray, right: np.ndarray):
 
 
 def quick_hull_step_through(points: np.ndarray) -> (np.ndarray, dict, dict):
+    global step_upper
     convex_hull = []
     if points.size == 0:
         return convex_hull
@@ -76,6 +78,7 @@ def quick_hull_step_through(points: np.ndarray) -> (np.ndarray, dict, dict):
 
 
 def find_hull_step_through(points: np.ndarray, left: np.ndarray, right: np.ndarray, steps, min, max, step, upper):
+    global step_upper
     convex_hull = []
     if points.size == 0:
         return convex_hull
@@ -85,8 +88,7 @@ def find_hull_step_through(points: np.ndarray, left: np.ndarray, right: np.ndarr
         hull_part1 = find_points_left_to_line(left, max_point_to_line, points)
         hull_part2 = find_points_left_to_line(max_point_to_line, right, points)
 
-        step_new = step + 1
-
+        step_upper = step + 1
         array = []
 
         # add current step to steps
@@ -97,14 +99,14 @@ def find_hull_step_through(points: np.ndarray, left: np.ndarray, right: np.ndarr
 
         convex_hull.extend([left])
         convex_hull.extend(
-            find_hull_step_through(hull_part1, left, max_point_to_line, steps, min, max, step_new, True))
+            find_hull_step_through(hull_part1, left, max_point_to_line, steps, min, max, step_upper, True))
         convex_hull.extend([max_point_to_line])
 
         # increase step so all steps are added to steps
-        step_new = step_new + 1
+        step_upper = step_upper + 1
 
         convex_hull.extend(
-            find_hull_step_through(hull_part2, max_point_to_line, right, steps, min, max, step_new, False))
+            find_hull_step_through(hull_part2, max_point_to_line, right, steps, min, max, step_upper, False))
         convex_hull.extend([right])
 
         return convex_hull
