@@ -199,7 +199,8 @@ quickhull_hull = np.array([])
 data = None
 animation_timer = None
 animation_active = False
-animation_interval = 200  # Animation steps speed in ms
+step_animation_timer = None
+animation_interval = 500  # Animation steps speed in ms
 step_index = 0
 step_index_plot2 = 0
 current_plot = 1  # tracking for step through functionality
@@ -465,53 +466,59 @@ def animation_start_quickhull(p, list_of_steps, finished_hull, text):
 
 
 def quick_run():
-    global data, animation_active, animation_timer
+    global animation_active, step_animation_timer
 
-    p1.clear()
-    p2.clear()
-
-    # Checks if data had successfully been loaded and whether data processing
-    # can commence
+    # Ensure there's data to process and no ongoing animation
     if data is None or animation_active:
         return
 
-    # Tinko: Todo add step through functionality for quick run
+    # Disable buttons to prevent user interaction during the animation
+    animation_active = True
+    btn_loadData.setEnabled(False)
+    btn_generateData.setEnabled(False)
+    btn_step.setEnabled(False)
+    btn_result.setEnabled(False)
 
-    # Reading the points out of the data
-    x, y = read_values_from_data(data)
-    points = np.column_stack((x, y))
-    plot_points(x, y)
+    # Initialize the animation timer
+    step_animation_timer = QtCore.QTimer()
 
-    # Calculating the convex hull with the gift wrapping algorithm
-    gift_wrapper_convex_hull = gift_wrapping_algorithm(points)
-    print("giftwrapper hull")
-    print(gift_wrapper_convex_hull)
-    # Getting the x- and y coordinates from convex hull
-    hull_x_g = gift_wrapper_convex_hull[:, 0]
-    hull_y_g = gift_wrapper_convex_hull[:, 1]
+    # Start the automated quick run animation
+    animate_quick_run()
 
-    complete_hull, step_by_step = Quickhull.get_quickhull_step_results(points)
 
-    # In order to have animations run one after another (which is necessary
-    # if they share the same timer
-    total_duration_p1 = (len(hull_x_g) * 2) * animation_interval
+def animate_quick_run():
+    global animation_active, step_animation_timer, current_plot, step_index, step_index_plot2
 
-    try:
-        animation_start(p1, hull_x_g, hull_y_g, "Giftwrapper is executed")
-    except Exception as e:
-        text_label.setText("Error animating Giftwrapper, Continuing with next"
-                           "algorithm")
-        print("Error during animation: " + str(e))
+    # Ensure there's data to process
+    if data is None:
+        return
 
-    ## plot quickhull
-    try:
-        QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start_quickhull(
-            p2, step_by_step, complete_hull, "Quickhull is executed"))
-    except Exception as e:
-        text_label.setText("Error animating Quickhull")
-        print("Error during animation: " + str(e))
+    # Call the step_through function to handle the next step in the animation
+    step_through()
 
-    animation_active = False
+    # Check if the animation is complete
+    if current_plot == 2 and step_index_plot2 == len(steps_quickhull):
+        # Animation is complete after finishing the second plot
+        animation_active = False
+
+        # Stop the timer
+        if step_animation_timer.isActive():
+            step_animation_timer.stop()
+
+        # Reset button states to allow further interactions
+        btn_loadData.setEnabled(True)
+        btn_generateData.setEnabled(True)
+        btn_step.setEnabled(True)
+        btn_result.setEnabled(True)
+        text_label.setText("Quick Run Animation Completed")
+
+        # Reset the plot states
+        current_plot = 1
+        step_index = 0
+        step_index_plot2 = 0
+    else:
+        # Continue animation by scheduling the next call
+        step_animation_timer.singleShot(animation_interval, animate_quick_run)
 
 
 def plot_convex_hull(p, points, hull_points):
@@ -672,8 +679,11 @@ def step_through():
         text_label.setText(f"Step {step_index}/{len(steps_giftwrapper)}")
 
     elif current_plot == 1 and step_index == len(steps_giftwrapper):
-        print("next plot")
-        current_plot += 1
+        # Switch to Quickhull plot
+        current_plot = 2
+        step_index_plot2 = 0  # Initialize the index for Quickhull steps
+        quickhull_hull, steps_quickhull = Quickhull.get_quickhull_step_results(points)
+        text_label.setText("Starting Quickhull animation...")
 
     # Get Quickhull steps for plotting
     elif current_plot == 2 and step_index_plot2 == 0:
