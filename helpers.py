@@ -2,7 +2,6 @@ import numpy as np
 import time
 import GiftWrapper
 import Quickhull
-import temp
 
 
 def generate_random_points(num_points):
