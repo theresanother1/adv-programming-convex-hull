@@ -24,7 +24,7 @@ def generate_point(num_points):
 
 # generates point within the square of size x
 def generate_square(size, num_points):
-    points = np.random.uniform(-size/2, size/2, (num_points, 2))
+    points = np.random.uniform(-size / 2, size / 2, (num_points, 2))
     return points
 
 
@@ -73,10 +73,8 @@ def read_points_from_file(filename):
     return points
 
 
-def all_points_on_line(x: np.ndarray, y: np.ndarray):
-    x_size = np.unique(x).size
-    y_size = np.unique(y).size
-    if x_size == 1 or y_size == 1:
+def all_points_on_h_or_v_line(x: np.ndarray, y: np.ndarray) -> bool:
+    if len(np.unique(y)) == 1 or len(np.unique(x)) == 1:
         return True
     else:
         return False
@@ -99,7 +97,8 @@ def continue_or_finish():
 
 
 def get_points():
-    user_input = input("Read in file or generate random (Read File F, Generate Random R, Circle C, Square S, Line L, Point P):  ").strip().upper()
+    user_input = input(
+        "Read in file or generate random (Read File F, Generate Random R, Circle C, Square S, Line L, Point P):  ").strip().upper()
     if user_input in ['R', 'G']:
 
         if user_input == 'R':
@@ -131,7 +130,7 @@ def get_points():
 def execute_algo_console(points):
     while True:
         if points is not None:
-            #points = get_points()
+            # points = get_points()
             algo = input("Choose your algorithm (Quickhull Q/ Gift Wrapper G ):  ").strip().upper()
             if algo in ['Q', 'G']:
                 if algo == 'Q':

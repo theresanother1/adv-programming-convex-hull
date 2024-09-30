@@ -93,8 +93,8 @@ p1 = plots_panel.addPlot(row=0, col=0, title="Gift Wrapper")
 p2 = plots_panel.addPlot(row=0, col=1, title="Quickhull")
 
 # @Salome das hier hat nur das fenster komisch am bildschirm verschoben, daher auskommentiert
-#plots_panel.ci.layout.setColumnStretchFactor(1, 0)
-#plots_panel.ci.layout.setColumnStretchFactor(1, 1)
+# plots_panel.ci.layout.setColumnStretchFactor(1, 0)
+# plots_panel.ci.layout.setColumnStretchFactor(1, 1)
 
 # GUI: Buttons
 btn_loadData = pg.QtWidgets.QPushButton('Load New Data')
@@ -504,16 +504,17 @@ def show_results():
     # Todo: potentiell updaten für längere laufzeiten - das was angezeigt wird?
     # Todo: hull punkte, wenn es welche gibt anzeigen?
 
+    # Calculating the convex hull with the quickhull wrapping algorithm
+    print("Start calculate quickhull.")
+    time_q, convex_hull_quickhull = helpers.measure_time(Quickhull.quick_hull, points)
+    print("Finished calculate quickhull.")
 
     # Calculating the convex hull with the gift wrapping algorithm
     print("Start calculate giftwrapper.")
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
 
-    # Calculating the convex hull with the quickhull wrapping algorithm
-    print("Start calculate quickhull.")
-    time_q, convex_hull_quickhull = helpers.measure_time(Quickhull.quick_hull, points)
-    print("Finished calculate quickhull.")
+
 
     if not convex_hull_quickhull:
         # Todo: textfeld leider nicht angezeigt

@@ -1,7 +1,9 @@
 import numpy as np
 
+
 def leftmost_point(points):
     return min(points, key=lambda p: (p[0], p[1]))
+
 
 def orientation(p, q, r):
     return (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
@@ -17,10 +19,10 @@ def orientation(p, q, r):
 #     # Berechne die Ausdehnung des Punktbereichs
 #     x_min, y_min = np.min(points, axis=0)
 #     x_max, y_max = np.max(points, axis=0)
-    
+
 #     # Berechne die Diagonale des Bereichs
 #     diagonal = np.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2)
-    
+
 #     # Setze max_distance auf einen Prozentsatz der Diagonalen
 #     max_distance = percentage * diagonal
 #     return max_distance
@@ -40,12 +42,11 @@ def orientation(p, q, r):
 ##########################################################################################################
 
 def gift_wrapping_algorithm(points):
-
     # Todo: füg den ersten punkt noch als letzten punkt ein, damit die hülle komplett ist
     # Checking if the Array is empty
     if points.size == 0:
         raise ValueError("The point cloud is empty")
-    
+
     convex_hull = []
     start = leftmost_point(points)
     point_on_hull = start
@@ -56,7 +57,7 @@ def gift_wrapping_algorithm(points):
     while True:
         convex_hull.append(point_on_hull)
         next_point = None
-        
+
         # See the information above about filtering points 
         # filtered_points = filter_points(point_on_hull, points, max_distance) 
         # if len(filtered_points) == 0:
@@ -65,14 +66,15 @@ def gift_wrapping_algorithm(points):
         for point in points:
             if np.array_equal(point, point_on_hull):
                 continue
-        
+
             if next_point is None:
                 next_point = point
                 continue
-            
+
             # Cross product is been used to optimize the orientation of this alogrithm 
             cross_product = orientation(point_on_hull, next_point, point)
-            if cross_product > 0 or (cross_product == 0 and np.linalg.norm(point - point_on_hull) > np.linalg.norm(next_point - point_on_hull)):
+            if cross_product > 0 or (cross_product == 0 and np.linalg.norm(point - point_on_hull) > np.linalg.norm(
+                    next_point - point_on_hull)):
                 next_point = point
 
         # Checking if the points are collinear 
