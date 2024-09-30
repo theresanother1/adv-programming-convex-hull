@@ -3,6 +3,7 @@ import helpers
 
 step_upper = 0
 
+
 def quick_hull(points: np.ndarray):
     convex_hull = []
     if points.size == 0:

@@ -42,7 +42,6 @@ def orientation(p, q, r):
 ##########################################################################################################
 
 def gift_wrapping_algorithm(points):
-
     # Checking if the Array is empty
     if points.size == 0:
         raise ValueError("The point cloud is empty")
@@ -90,23 +89,21 @@ def gift_wrapping_algorithm(points):
     convex_hull.append(start)
     return np.array(convex_hull)
 
-def gift_wrapping_step_through(points):
 
+def gift_wrapping_step_through(points):
     # Checking if the point cloud we are getting is empty
     if points.size == 0:
         raise ValueError("The point cloud is empty")
 
     steps = []  # This empty Array is going to be used to save each steps
-    convex_hull = [] # This empty Array is going to be used to save the calculated convex hull
-    start = leftmost_point(points) # Starting with the left most point
+    convex_hull = []  # This empty Array is going to be used to save the calculated convex hull
+    start = leftmost_point(points)  # Starting with the left most point
     point_on_hull = start
-
 
     while True:
         convex_hull.append(point_on_hull)
         next_point = None
-        compared_points = [] # This empty Array is going to be used to store the comapred points
-
+        compared_points = []  # This empty Array is going to be used to store the comapred points
 
         for point in points:
             if np.array_equal(point, point_on_hull):
@@ -119,10 +116,11 @@ def gift_wrapping_step_through(points):
                 next_point = point
                 continue
 
-           # Calculating the orientation by using a cross product funtion to each point to get the best positive angle to the ideal point
-           # So we can get the perfect convex hull
+            # Calculating the orientation by using a cross product funtion to each point to get the best positive angle to the ideal point
+            # So we can get the perfect convex hull
             cross_product = orientation(point_on_hull, next_point, point)
-            if cross_product > 0 or (cross_product == 0 and np.linalg.norm(point - point_on_hull) > np.linalg.norm(next_point - point_on_hull)):
+            if cross_product > 0 or (cross_product == 0 and np.linalg.norm(point - point_on_hull) > np.linalg.norm(
+                    next_point - point_on_hull)):
                 next_point = point
 
         # Checking if the points are collinear

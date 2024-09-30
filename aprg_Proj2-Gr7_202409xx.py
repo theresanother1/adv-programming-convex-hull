@@ -514,8 +514,6 @@ def show_results():
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
 
-
-
     if not convex_hull_quickhull:
         # Todo: textfeld leider nicht angezeigt
         print("calculate Hull with quickhull not possible ")
@@ -591,8 +589,7 @@ def step_through():
     if current_plot == 1 and step_index == 0:
         print("initialising plot p1")
 
-   
-        # Calculating the konvex hull with the Gift-Wrapping Algoritmus 
+        # Calculating the konvex hull with the Gift-Wrapping Algoritmus
         steps_giftwrapper = gift_wrapping_step_through(points)
         step_index += 1
 
@@ -613,21 +610,20 @@ def step_through():
         p.clear()
 
         # Visualize the given point cloud as black dots in our blot
-        p.plot(points[:, 0], points[:, 1], pen=None, symbol='o', symbolSize=8, symbolBrush='k') 
+        p.plot(points[:, 0], points[:, 1], pen=None, symbol='o', symbolSize=8, symbolBrush='k')
 
         # Visualizing the hull in red
-        p.plot(hull_x, hull_y, pen='r') 
+        p.plot(hull_x, hull_y, pen='r')
 
-        
         # To visualize which point is been right now used. Its marked by a blue point
-        p.plot([hull_x[-1]], [hull_y[-1]], pen=None, symbol='o', symbolSize=10, symbolBrush='b')  
+        p.plot([hull_x[-1]], [hull_y[-1]], pen=None, symbol='o', symbolSize=10, symbolBrush='b')
 
         if is_comparison_phase:
             # Visualize the actual compared points to the makred point.
             if len(compared_points) > 0:
                 for point in compared_points:
                     # A green line is been used to visualize the relationship between the compared and the current point
-                    p.plot([hull_x[-1], point[0]], [hull_y[-1], point[1]], pen='g') 
+                    p.plot([hull_x[-1], point[0]], [hull_y[-1], point[1]], pen='g')
                     # The compared points are marked green and in addition as dots with an x 
                     p.plot([point[0]], [point[1]], pen=None, symbol='x', symbolSize=8, symbolBrush='g')
 
@@ -637,12 +633,13 @@ def step_through():
         else:
             # Visualize the Point as and red dot 
             if current_selected_point is not None:
-                p.plot([current_selected_point[0]], [current_selected_point[1]], pen=None, symbol='o', symbolSize=12, symbolBrush='r')
-            
+                p.plot([current_selected_point[0]], [current_selected_point[1]], pen=None, symbol='o', symbolSize=12,
+                       symbolBrush='r')
+
             # Chaning to the next step and reset the phase 
             step_index += 1
             is_comparison_phase = True
-            current_selected_point = None # The current selected point is now also been reseted  
+            current_selected_point = None  # The current selected point is now also been reseted
 
         btn_step.setText("Next Step")
         text_label.setText(f"Step {step_index}/{len(steps_giftwrapper)}")
