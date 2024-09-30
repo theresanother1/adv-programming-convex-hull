@@ -553,12 +553,6 @@ def show_results():
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
 
-    # Todo Theresa: change to with updated quickhull #if not np.any(convex_hull_quickhull) == 0:
-    if not convex_hull_quickhull:
-        # Todo: textfeld leider nicht angezeigt
-        print("calculate Hull with quickhull not possible ")
-        additional_info_quickhull.setText("Cannot calculate quickhull convex hull with given data")
-
     # Plotting the convex hull only for values smaller 100
     if x.size <= 100:
         plot_convex_hull(p1, points, gift_wrapper_convex_hull)
