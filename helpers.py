@@ -2,6 +2,7 @@ import numpy as np
 import time
 import GiftWrapper
 import Quickhull
+import temp
 
 
 def generate_random_points(num_points):
@@ -127,10 +128,10 @@ def get_points():
                     return generate_random_points(points_amount)
 
 
-def execute_algo_console(points):
+def execute_algo_console():
     while True:
+        points = get_points()
         if points is not None:
-            # points = get_points()
             algo = input("Choose your algorithm (Quickhull Q/ Gift Wrapper G ):  ").strip().upper()
             if algo in ['Q', 'G']:
                 if algo == 'Q':
