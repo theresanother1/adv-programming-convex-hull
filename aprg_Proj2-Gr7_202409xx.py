@@ -54,7 +54,7 @@ import pyqtgraph as pg
 from pyqtgraph.dockarea import Dock, DockArea
 import logging
 import helpers
-from GiftWrapper import gift_wrapping_algorithm
+from GiftWrapper import gift_wrapping_algorithm, gift_wrapping_step_through
 import Quickhull
 from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
@@ -569,7 +569,7 @@ def plot_current_step(p, steps, index):
 
 def step_through():
     global step_index, current_plot, data, steps_quickhull_upper, step_index_plot2, quickhull_hull, \
-        steps_quickhull_lower, steps_quickhull, steps_giftwrapper
+        steps_quickhull_lower, steps_quickhull, steps_giftwrapper, is_comparison_phase, current_selected_point
 
     if data is None:
         return
@@ -591,50 +591,65 @@ def step_through():
     if current_plot == 1 and step_index == 0:
         print("initialising plot p1")
 
-        # Tinko: TODO add function that saves all inbetween states  to plot
-
-        # Calculating the convex hull with the gift wrapping algorithm
-        steps_giftwrapper = gift_wrapping_algorithm(points)
+   
+        # Calculating the konvex hull with the Gift-Wrapping Algoritmus 
+        steps_giftwrapper = gift_wrapping_step_through(points)
         step_index += 1
 
-        # Getting the x- and y coordinates from convex hull
-        hull_x = steps_giftwrapper[:, 0]
-        hull_y = steps_giftwrapper[:, 1]
+        # Just a Boolean to activate the compare modi for the first step.
+        is_comparison_phase = True
 
-    elif current_plot == 1 and step_index < len(steps_giftwrapper[:, 0]):
-        hull_x = steps_giftwrapper[:, 0]
-        hull_y = steps_giftwrapper[:, 1]
-        print("plot p1")
-        p.plot(hull_x[:step_index + 1], hull_y[:step_index + 1], pen='r')
-        p.plot([hull_x[step_index]], [hull_y[step_index]], pen=None, symbol='o',
-               symbolSize=10, symbolBrush='b')
-        step_index += 1
+    elif current_plot == 1 and step_index < len(steps_giftwrapper):
+
+        # Access to the actual step
+        current_step = steps_giftwrapper[step_index]
+        hull_points = current_step['hull']
+        compared_points = current_step['compared_points']
+        selected_point = current_step.get('selected_point', None)
+
+        hull_x = hull_points[:, 0]
+        hull_y = hull_points[:, 1]
+
+        p.clear()
+
+        # Visualize the given point cloud as black dots in our blot
+        p.plot(points[:, 0], points[:, 1], pen=None, symbol='o', symbolSize=8, symbolBrush='k') 
+
+        # Visualizing the hull in red
+        p.plot(hull_x, hull_y, pen='r') 
+
+        
+        # To visualize which point is been right now used. Its marked by a blue point
+        p.plot([hull_x[-1]], [hull_y[-1]], pen=None, symbol='o', symbolSize=10, symbolBrush='b')  
+
+        if is_comparison_phase:
+            # Visualize the actual compared points to the makred point.
+            if len(compared_points) > 0:
+                for point in compared_points:
+                    # A green line is been used to visualize the relationship between the compared and the current point
+                    p.plot([hull_x[-1], point[0]], [hull_y[-1], point[1]], pen='g') 
+                    # The compared points are marked green and in addition as dots with an x 
+                    p.plot([point[0]], [point[1]], pen=None, symbol='x', symbolSize=8, symbolBrush='g')
+
+            # Now the marked modi is been activate to mark the perfect point for the convex hull
+            is_comparison_phase = False
+            current_selected_point = selected_point  # The current selected point is been saved for the next phase
+        else:
+            # Visualize the Point as and red dot 
+            if current_selected_point is not None:
+                p.plot([current_selected_point[0]], [current_selected_point[1]], pen=None, symbol='o', symbolSize=12, symbolBrush='r')
+            
+            # Chaning to the next step and reset the phase 
+            step_index += 1
+            is_comparison_phase = True
+            current_selected_point = None # The current selected point is now also been reseted  
+
         btn_step.setText("Next Step")
-        text_label.setText(str(step_index) + " points connected")
-        step_index += 1
+        text_label.setText(f"Step {step_index}/{len(steps_giftwrapper)}")
 
-    elif current_plot == 1 and step_index == len(steps_giftwrapper[:, 0]):
+    elif current_plot == 1 and step_index == len(steps_giftwrapper):
         print("next plot")
         current_plot += 1
-
-    elif current_plot == 2 and step_index_plot2 == 0:
-        print("get vals for step through")
-        quickhull_hull, upper, lower = Quickhull.quick_hull_step_through(points)
-        steps_quickhull_upper = dict(sorted(upper.items()))
-        steps_quickhull_lower = dict(sorted(lower.items()))
-        list_results = []
-        list_results.extend(steps_quickhull_upper.values())
-        list_results.extend(steps_quickhull_lower.values())
-        steps_quickhull = list_results
-        step_index_plot2 += 1
-
-    elif current_plot == 2 and 0 <= step_index_plot2 < len(steps_quickhull):
-        print("plot p2")
-        if step_index_plot2 > 0:
-            revert_previous_step(p, steps_quickhull, step_index_plot2)
-
-        plot_current_step(p, steps_quickhull, step_index_plot2)
-        step_index_plot2 += 1
 
     elif current_plot == 2 and step_index_plot2 == len(steps_quickhull):
         print("plot hull in p2")
