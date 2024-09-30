@@ -364,7 +364,7 @@ def disable_algo_relevant_buttons():
 
 # Plotting plot 4 based on random data
 def plotting_random():
-    global animation_active, data, current_plot, step_index, step_index_plot2
+    global animation_active, data, current_plot, step_index, step_index_plot2, points_amount
     reset_data()
 
     points_amount = text_amount.text()
@@ -400,6 +400,31 @@ def update_curve(p, x, y, i):
         btn_generateData.setEnabled(True)
 
 
+def plot_algo_step_by_step(list_of_steps, value, plot, index, finished_hull):
+    global animation_active, animation_timer
+    if index <= len(list_of_steps):
+        steps = np.array(list_of_steps[index - 1])
+        hull_x_step = steps[:, 0]
+        hull_y_step = steps[:, 1]
+        repaint_line_step(hull_x_step, hull_y_step, plot, True)
+        if index > 0:
+            value = np.array(value)
+            hull_x_step = value[:, 0]
+            hull_y_step = value[:, 1]
+            repaint_line_step(hull_x_step, hull_y_step, plot, False)
+
+        if index == len(list_of_steps):
+            finished_hull = np.array(finished_hull)
+            repaint_line_step(finished_hull[:, 0], finished_hull[:, 1], plot, False)
+        animation_timer.i += 1
+
+    else:
+        animation_timer.stop()
+        animation_active = False
+        btn_loadData.setEnabled(True)
+        btn_generateData.setEnabled(True)
+
+
 def animation_start(p, x, y, text):
     global animation_active, animation_timer
 
@@ -410,6 +435,27 @@ def animation_start(p, x, y, text):
         animation_timer = QtCore.QTimer()
         animation_timer.timeout.connect(lambda: update_curve(
             p, x, y, animation_timer.i))
+        animation_timer.i = 0
+        animation_timer.start(animation_interval)
+
+    except Exception as e:
+        print("Error during animation: " + str(e))
+        animation_active = False
+
+
+def animation_start_quickhull(p, list_of_steps, finished_hull, text):
+    global animation_active, animation_timer
+
+    try:
+        animation_active = True
+        text_label.setText(text)
+
+        animation_timer = QtCore.QTimer()
+
+        for value in list_of_steps:
+            animation_timer.timeout.connect(lambda: plot_algo_step_by_step(
+                list_of_steps, value, p, animation_timer.i, finished_hull))
+
         animation_timer.i = 0
         animation_timer.start(animation_interval)
 
@@ -430,10 +476,6 @@ def quick_run():
         return
 
     # Tinko: Todo add step through functionality for quick run
-    # Tsp: Todo add step through functionality for quick run
-
-    # TODO modify according to task - just an example
-    # Algorithms will determine the points x, y to be displayed
 
     # Reading the points out of the data
     x, y = read_values_from_data(data)
@@ -448,12 +490,7 @@ def quick_run():
     hull_x_g = gift_wrapper_convex_hull[:, 0]
     hull_y_g = gift_wrapper_convex_hull[:, 1]
 
-    convex_hull_quickhull = np.array(Quickhull.quick_hull(points))
-    print("quickhull")
-    print(convex_hull_quickhull)
-
-    hull_x_q = convex_hull_quickhull[:, 0]
-    hull_y_q = convex_hull_quickhull[:, 1]
+    complete_hull, step_by_step = Quickhull.get_quickhull_step_results(points)
 
     # In order to have animations run one after another (which is necessary
     # if they share the same timer
@@ -465,9 +502,11 @@ def quick_run():
         text_label.setText("Error animating Giftwrapper, Continuing with next"
                            "algorithm")
         print("Error during animation: " + str(e))
+
+    ## plot quickhull
     try:
-        QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start(
-            p2, hull_x_q, hull_y_q, "Quickhull is executed"))
+        QtCore.QTimer.singleShot(total_duration_p1, lambda: animation_start_quickhull(
+            p2, step_by_step, complete_hull, "Quickhull is executed"))
     except Exception as e:
         text_label.setText("Error animating Quickhull")
         print("Error during animation: " + str(e))
@@ -514,13 +553,14 @@ def show_results():
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
 
+    # Todo Theresa: change to with updated quickhull #if not np.any(convex_hull_quickhull) == 0:
     if not convex_hull_quickhull:
         # Todo: textfeld leider nicht angezeigt
         print("calculate Hull with quickhull not possible ")
         additional_info_quickhull.setText("Cannot calculate quickhull convex hull with given data")
 
     # Plotting the convex hull only for values smaller 100
-    if x.size < 100:
+    if x.size <= 100:
         plot_convex_hull(p1, points, gift_wrapper_convex_hull)
         plot_convex_hull(p2, points, convex_hull_quickhull)
         text_label.setText(f"\nGift Wrapper time:  {time_g} secs\n"
@@ -531,9 +571,9 @@ def show_results():
                            f"Quickhull Time:  {time_q} secs ")
 
 
+# paints the line in step by step plotting, repaints discarded lines
 def repaint_line_step(a_x, a_y, p, only_points):
     index = 0
-    print("printing lines ")
     while index < len(a_x):
         if only_points:
             p.plot(a_x[:index + 1], a_y[:index + 1], symbol='o',
@@ -544,8 +584,8 @@ def repaint_line_step(a_x, a_y, p, only_points):
         index += 1
 
 
+# resets the whole plot
 def reset_paint_step(og_x, og_y, p):
-    print("reset plot ")
     p.clear()
     p.plot(og_x, og_y, pen=None, symbol='o')
 
@@ -576,19 +616,12 @@ def step_through():
     x, y = read_values_from_data(data)
     points = np.column_stack((x, y))
 
-    # p1.clear()
-    # p2.clear()
-    # p3.clear()
     if current_plot == 1:
         p = p1
     if current_plot == 2:
         p = p2
 
-    print("Current plot is: ", current_plot)
-
     if current_plot == 1 and step_index == 0:
-        print("initialising plot p1")
-
         # Calculating the konvex hull with the Gift-Wrapping Algoritmus
         steps_giftwrapper = gift_wrapping_step_through(points)
         step_index += 1
@@ -648,6 +681,20 @@ def step_through():
         print("next plot")
         current_plot += 1
 
+    # Get Quickhull steps for plotting
+    elif current_plot == 2 and step_index_plot2 == 0:
+        quickhull_hull, steps_quickhull = Quickhull.get_quickhull_step_results(points)
+        step_index_plot2 += 1
+
+    # Print Quickhull steps
+    elif current_plot == 2 and 0 <= step_index_plot2 < len(steps_quickhull):
+        if step_index_plot2 > 0:
+            revert_previous_step(p, steps_quickhull, step_index_plot2)
+
+        plot_current_step(p, steps_quickhull, step_index_plot2)
+        step_index_plot2 += 1
+
+    # Print complete hull - for beauty reasons
     elif current_plot == 2 and step_index_plot2 == len(steps_quickhull):
         print("plot hull in p2")
         quickhull_hull = np.array(quickhull_hull)
