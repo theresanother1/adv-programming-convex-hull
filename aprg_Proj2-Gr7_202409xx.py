@@ -79,6 +79,7 @@ d3 = Dock("Info-Panel", size=(400, 300))
 # GUI: Widgets
 # ## (for holding plots)
 plots_panel = pg.GraphicsLayoutWidget()
+
 # ## (for holding user interaction features)
 control_container = QtWidgets.QWidget()
 control_layout = QtWidgets.QVBoxLayout()
@@ -103,7 +104,7 @@ btn_result = pg.QtWidgets.QPushButton('Show Result')
 btn_run = pg.QtWidgets.QPushButton('Quick Run')
 btn_reset = pg.QtWidgets.QPushButton('Reset')
 text_amount = pg.QtWidgets.QLineEdit()
-text_amount.setPlaceholderText('Enter a value')  # Set a placeholder text
+text_amount.setPlaceholderText('Enter number of points to generate')  # Set a placeholder text
 
 # GUI: Program Text
 text_label = QtWidgets.QLabel("Load File or generate random points")
@@ -247,13 +248,13 @@ def reset_plots():
     btn_step.setText("Step Through")
 
     if data is not None:
-        btn_step.setEnabled(True)
+        #btn_step.setEnabled(True)
         btn_result.setEnabled(True)
-        btn_run.setEnabled(True)
+        #btn_run.setEnabled(True)
     else:
-        btn_step.setEnabled(False)
+        #btn_step.setEnabled(False)
         btn_result.setEnabled(False)
-        btn_run.setEnabled(False)
+        #btn_run.setEnabled(False)
 
     btn_loadData.setEnabled(True)
     btn_generateData.setEnabled(True)
@@ -338,19 +339,29 @@ def reset_data():
     animation_timer = None
     animation_active = False
     x, y = read_values_from_data(data)
-    if x is not None and x.size <= 100:
-        plot_points(x, y)
+    if x is not None:
+        if x.size <= 100:
+            plot_points(x, y)
+        if x.size > 20:
+            btn_run.setEnabled(False)
+            btn_step.setEnabled(False)
+        elif x.size <= 20:
+            btn_run.setEnabled(True)
+            btn_step.setEnabled(True)
+
 
 
 # update plots after generating random data
 def update_plot_after_generating(x, y, number_of_points):
     if x.size <= 100:
         plot_points(x, y)
-        text_label.setText(f"Generated {number_of_points} points. You can load new data or run the algorithms")
-        btn_step.setEnabled(True)
+        text_label.setText(f"Generated {number_of_points} points. You can load new data or run the algorithms"
+                            f"\nQuick run and Step through only available for <= 20 points.")
         btn_result.setEnabled(True)
-        btn_run.setEnabled(True)
         btn_reset.setEnabled(True)
+    if x.size <= 20:
+        btn_step.setEnabled(True)
+        btn_run.setEnabled(True)
     if x.size > 100:
         text_label.setText(f"Generated {number_of_points} points. Not plotted - too many points.")
         btn_result.setEnabled(True)
@@ -370,21 +381,23 @@ def plotting_random():
     reset_data()
 
     points_amount = text_amount.text()
-    if points_amount != 0:
+    try:
         data = helpers.generate_random_points(int(points_amount))
-        clear_all_plots()
+    except:
+        return
+    clear_all_plots()
 
-        x, y = read_values_from_data(data)
+    x, y = read_values_from_data(data)
 
-        if x is not None and y is not None:
-            update_plot_after_generating(x, y, len(x))
+    if x is not None and y is not None:
+        update_plot_after_generating(x, y, len(x))
 
-        else:
-            disable_algo_relevant_buttons()
+    else:
+        disable_algo_relevant_buttons()
 
-        btn_loadData.setEnabled(True)
-        btn_generateData.setEnabled(True)
-        animation_active = False
+    btn_loadData.setEnabled(True)
+    btn_generateData.setEnabled(True)
+    animation_active = False
 
 
 # QUICK RUN ANIMATION
@@ -516,9 +529,6 @@ def show_results():
     print("Start calculate giftwrapper.")
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
-    print(gift_wrapper_convex_hull)
-    print("quickhull")
-    print(convex_hull_quickhull)
 
     hulls_are_equal = len(convex_hull_quickhull) == len(gift_wrapper_convex_hull)
 
