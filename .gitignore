@@ -8,6 +8,8 @@ __pycache__/
 
 # redundant data folder
 my_data
+results_on
+
 
 # executable file
 executable_gui_and_console
