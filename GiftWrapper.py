@@ -44,7 +44,7 @@ def orientation(p, q, r):
 def gift_wrapping_algorithm(points):
     # Checking if the Array is empty
     if points.size == 0:
-        raise ValueError("The point cloud is empty")
+        return points
 
     convex_hull = []
     start = leftmost_point(points)
@@ -86,14 +86,13 @@ def gift_wrapping_algorithm(points):
         if np.array_equal(point_on_hull, start):
             break
 
-    convex_hull.append(start)
     return np.array(convex_hull)
 
 
 def gift_wrapping_step_through(points):
     # Checking if the point cloud we are getting is empty
     if points.size == 0:
-        raise ValueError("The point cloud is empty")
+        return points
 
     steps = []  # This empty Array is going to be used to save each steps
     convex_hull = []  # This empty Array is going to be used to save the calculated convex hull

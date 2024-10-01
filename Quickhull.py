@@ -22,9 +22,7 @@ def quick_hull(points: np.ndarray) -> np.ndarray:
 
     # if min max is None --> all points are on one line, all points are hull
     if minmax is None:
-        return points
-
-    left, right = minmax[0, :], minmax[1, :]
+        return np.array([points[0, :], points[-1, :]])
 
     # Split points into upper and lower sets, initially include all points
     upper_set = np.ones(points.shape[0], dtype=bool)
@@ -35,51 +33,53 @@ def quick_hull(points: np.ndarray) -> np.ndarray:
     lower_set[left_idx] = lower_set[right_idx] = False
 
     # include only those points, which are left to line
-    upper_set[upper_set] = is_left(left, right, points[upper_set]) > 1e-9
-    # include only those points, which are left to line
-    lower_set[lower_set] = is_left(right, left, points[lower_set]) > 1e-9
+    upper_set[upper_set] = is_left(left_idx, right_idx, points, upper_set) > 1e-9
 
-    # find hull points
-    hull_upper = find_hull(points, left, right, upper_set)
-    hull_lower = find_hull(points, right, left, lower_set)
+    # include only those points, which are left to line
+    lower_set[lower_set] = is_left(right_idx, left_idx, points, lower_set) > 1e-9
 
     # Combine results
-    return np.vstack((left, hull_upper, right, hull_lower))
+    return np.vstack((points[left_idx], find_hull(points, left_idx, right_idx, upper_set), points[right_idx], find_hull(points, right_idx, left_idx, lower_set)))
 
 
-def find_hull(points: np.ndarray, p1: np.ndarray, p2: np.ndarray, point_set: np.ndarray) -> np.ndarray:
-    if not np.any(point_set):
+def find_hull(og_points: np.ndarray, p1_idx: int, p2_idx: int, current_subset_mask: np.ndarray) -> np.ndarray:
+    if not np.any(current_subset_mask):
         return np.empty((0, 2))
 
     # Find point with maximum distance
-    distances = is_left(p1, p2, points[point_set])
+    distances = is_left(p1_idx, p2_idx, og_points, current_subset_mask)
     max_dist_idx = np.argmax(distances)
-    max_point = points[point_set][max_dist_idx]
+    max_point_idx = np.where(current_subset_mask)[0][max_dist_idx]
 
-    # do not apply along axis due to introduced overhead
-    region_left_to_max = point_set.copy()
-    region_max_to_right = point_set.copy()
-    region_left_to_max[point_set] = is_left(p1, max_point, points[point_set]) > 1e-9
-    region_max_to_right[point_set] = is_left(max_point, p2, points[point_set]) > 1e-9
-
-    # Find hull points
-    hull1 = find_hull(points, p1, max_point, region_left_to_max)
-    hull2 = find_hull(points, max_point, p2, region_max_to_right)
+    # get new subsets
+    region_left_to_max = current_subset_mask.copy()
+    region_max_to_right = current_subset_mask.copy()
+    region_left_to_max[current_subset_mask] = is_left(p1_idx, max_point_idx, og_points, current_subset_mask) > 1e-9
+    region_max_to_right[current_subset_mask] = is_left(max_point_idx, p2_idx, og_points, current_subset_mask) > 1e-9
 
     # Combine results
-    return np.vstack((hull1, max_point, hull2))
+    return np.vstack((find_hull(og_points, p1_idx, max_point_idx, region_left_to_max),
+                      og_points[max_point_idx],
+                      find_hull(og_points, max_point_idx, p2_idx, region_max_to_right)))
 
 
-def is_left(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    return np.cross(b - a, c - a)
+def is_left(a_idx: int, b_idx: int, points: np.ndarray, current_points_mask: np.ndarray) -> np.ndarray:
+    return np.cross(points[b_idx] - points[a_idx], points[current_points_mask] - points[a_idx])
 
 
 # slower version for step tracing
 def quick_hull_step_through(points: np.ndarray) -> (np.ndarray, dict, dict):
     global step_upper
     convex_hull = []
-    if points.size == 0:
-        return convex_hull
+    if points.shape[0] < 3:
+        return points, points[0, :], points[1, :]
+
+        # Find leftmost and rightmost points
+    minmax, left_idx, right_idx = get_min_max_starters(points)
+
+    # if min max is None --> all points are on one line, all points are hull
+    if minmax is None:
+        return np.array([points[0, :], points[-1, :]]), minmax[0, :], minmax[1:, ]
 
     minmax, min_idx, max_idx = get_min_max_starters(points)
 
@@ -120,7 +120,6 @@ def find_hull_step_through(points: np.ndarray, left: np.ndarray, right: np.ndarr
         array = []
 
         # add current step to steps
-        print([left], [max_point], [right])
         array.extend([left])
         array.extend([max_point])
         array.extend([right])

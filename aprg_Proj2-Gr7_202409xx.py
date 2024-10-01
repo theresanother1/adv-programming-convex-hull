@@ -49,16 +49,15 @@ NOTES:
       Buttons, the file was chosen to be where the main loop runs.
 
 '''
-import time
+
+
 import pyqtgraph as pg
 from pyqtgraph.dockarea import Dock, DockArea
-import logging
 import helpers
 from GiftWrapper import gift_wrapping_algorithm, gift_wrapping_step_through
 import Quickhull
 from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
-import pandas as pd
 
 # ************************* GLOBAL VARIABLES ******************************** #
 
@@ -215,8 +214,6 @@ btn_reset.setEnabled(False)
 
 # ****************  FUNCTION DEFINITIONS AND EVENT HANDLING  **************** #
 
-# TODO Functions can be placed elsewhere (in other files) if the do not make
-# use pyqtgraph methods.
 # Activities (and their methods) in the program flow are triggered solely by
 # event buttons (once the interface is running)
 
@@ -240,11 +237,6 @@ def reset_plots():
 
     p1.clear()
     p2.clear()
-
-    # replot points
-    x, y = read_values_from_data(data)
-    if x.size < 100:
-        plot_points(x, y)
 
     animation_active = False
     reset_data()
@@ -315,17 +307,17 @@ def read_values_from_data(data):
         return None, None
 
 
-# PLOTTING DATA FOR PLOT 4
+# PLOTTING DATA
 def plotting():
     global animation_active, data
     reset_data()
-    data = load_data()
+    data, number_of_points = load_data()
     x, y = read_values_from_data(data)
 
     clear_all_plots()
 
     if x is not None and y is not None:
-        update_plot_after_generating(x, y)
+        update_plot_after_generating(x, y, number_of_points)
     else:
         disable_algo_relevant_buttons()
 
@@ -334,24 +326,33 @@ def plotting():
     animation_active = False
 
 
+# RESET Plots and animation, replot current points
 def reset_data():
-    global current_plot, steps_quickhull, step_index, step_index_plot2
+    global current_plot, steps_quickhull, step_index, step_index_plot2, \
+        animation_timer, step_animation_timer, animation_active
     current_plot = 1
     steps_quickhull = []
     step_index = 0
     step_index_plot2 = 0
+    step_animation_timer = None
+    animation_timer = None
+    animation_active = False
+    x, y = read_values_from_data(data)
+    if x is not None and x.size <= 100:
+        plot_points(x, y)
 
 
-def update_plot_after_generating(x, y):
+# update plots after generating random data
+def update_plot_after_generating(x, y, number_of_points):
     if x.size <= 100:
         plot_points(x, y)
-        text_label.setText("Generated points. You can load new data or run the algorithms")
+        text_label.setText(f"Generated {number_of_points} points. You can load new data or run the algorithms")
         btn_step.setEnabled(True)
         btn_result.setEnabled(True)
         btn_run.setEnabled(True)
         btn_reset.setEnabled(True)
     if x.size > 100:
-        text_label.setText("Generated points. Not plotted - too many points.")
+        text_label.setText(f"Generated {number_of_points} points. Not plotted - too many points.")
         btn_result.setEnabled(True)
         btn_reset.setEnabled(True)
 
@@ -363,26 +364,27 @@ def disable_algo_relevant_buttons():
     btn_reset.setEnabled(False)
 
 
-# Plotting plot 4 based on random data
+# Plot random points
 def plotting_random():
     global animation_active, data, current_plot, step_index, step_index_plot2, points_amount
     reset_data()
 
     points_amount = text_amount.text()
-    data = helpers.generate_random_points(int(points_amount))
-    clear_all_plots()
+    if points_amount != 0:
+        data = helpers.generate_random_points(int(points_amount))
+        clear_all_plots()
 
-    x, y = read_values_from_data(data)
+        x, y = read_values_from_data(data)
 
-    if x is not None and y is not None:
-        update_plot_after_generating(x, y)
+        if x is not None and y is not None:
+            update_plot_after_generating(x, y, len(x))
 
-    else:
-        disable_algo_relevant_buttons()
+        else:
+            disable_algo_relevant_buttons()
 
-    btn_loadData.setEnabled(True)
-    btn_generateData.setEnabled(True)
-    animation_active = False
+        btn_loadData.setEnabled(True)
+        btn_generateData.setEnabled(True)
+        animation_active = False
 
 
 # QUICK RUN ANIMATION
@@ -401,31 +403,6 @@ def update_curve(p, x, y, i):
         btn_generateData.setEnabled(True)
 
 
-def plot_algo_step_by_step(list_of_steps, value, plot, index, finished_hull):
-    global animation_active, animation_timer
-    if index <= len(list_of_steps):
-        steps = np.array(list_of_steps[index - 1])
-        hull_x_step = steps[:, 0]
-        hull_y_step = steps[:, 1]
-        repaint_line_step(hull_x_step, hull_y_step, plot, True)
-        if index > 0:
-            value = np.array(value)
-            hull_x_step = value[:, 0]
-            hull_y_step = value[:, 1]
-            repaint_line_step(hull_x_step, hull_y_step, plot, False)
-
-        if index == len(list_of_steps):
-            finished_hull = np.array(finished_hull)
-            repaint_line_step(finished_hull[:, 0], finished_hull[:, 1], plot, False)
-        animation_timer.i += 1
-
-    else:
-        animation_timer.stop()
-        animation_active = False
-        btn_loadData.setEnabled(True)
-        btn_generateData.setEnabled(True)
-
-
 def animation_start(p, x, y, text):
     global animation_active, animation_timer
 
@@ -436,27 +413,6 @@ def animation_start(p, x, y, text):
         animation_timer = QtCore.QTimer()
         animation_timer.timeout.connect(lambda: update_curve(
             p, x, y, animation_timer.i))
-        animation_timer.i = 0
-        animation_timer.start(animation_interval)
-
-    except Exception as e:
-        print("Error during animation: " + str(e))
-        animation_active = False
-
-
-def animation_start_quickhull(p, list_of_steps, finished_hull, text):
-    global animation_active, animation_timer
-
-    try:
-        animation_active = True
-        text_label.setText(text)
-
-        animation_timer = QtCore.QTimer()
-
-        for value in list_of_steps:
-            animation_timer.timeout.connect(lambda: plot_algo_step_by_step(
-                list_of_steps, value, p, animation_timer.i, finished_hull))
-
         animation_timer.i = 0
         animation_timer.start(animation_interval)
 
@@ -490,14 +446,14 @@ def animate_quick_run():
     global animation_active, step_animation_timer, current_plot, step_index, step_index_plot2
 
     # Ensure there's data to process
-    if data is None:
+    if data is None or step_animation_timer is None:
         return
 
     # Call the step_through function to handle the next step in the animation
     step_through()
 
     # Check if the animation is complete
-    if current_plot == 2 and step_index_plot2 == len(steps_quickhull):
+    if current_plot == 2 and step_index_plot2 > len(steps_quickhull):
         # Animation is complete after finishing the second plot
         animation_active = False
 
@@ -523,11 +479,12 @@ def animate_quick_run():
 
 def plot_convex_hull(p, points, hull_points):
     p.clear()
+    p.plot(points[:, 0], points[:, 1], pen=None, symbol='o')
     for i in range(len(hull_points)):
         start = hull_points[i]
         end = hull_points[(i + 1) % len(hull_points)]
-        p.plot([start[0], end[0]], [start[1], end[1]], pen='r')
-    p.plot(points[:, 0], points[:, 1], pen=None, symbol='o')
+        p.plot([start[0], end[0]], [start[1], end[1]], pen='r', symbol='o',
+               symbolSize=10, symbolBrush='g')
 
 
 def show_results():
@@ -543,12 +500,12 @@ def show_results():
 
     points = np.column_stack((x, y))
 
+    if (len(x) > 10000):
+        text_label.setText(f"\n GUI processes only <= 10000 points.")
+        return
+
     p1.clear()
     p2.clear()
-
-    # Show results for both algorithms --> run both algorithms
-    # Todo: potentiell updaten für längere laufzeiten - das was angezeigt wird?
-    # Todo: hull punkte, wenn es welche gibt anzeigen?
 
     # Calculating the convex hull with the quickhull wrapping algorithm
     print("Start calculate quickhull.")
@@ -559,17 +516,25 @@ def show_results():
     print("Start calculate giftwrapper.")
     time_g, gift_wrapper_convex_hull = helpers.measure_time(gift_wrapping_algorithm, points)
     print("Finished calculate giftwrapper.")
+    print(gift_wrapper_convex_hull)
+    print("quickhull")
+    print(convex_hull_quickhull)
+
+    hulls_are_equal = len(convex_hull_quickhull) == len(gift_wrapper_convex_hull)
 
     # Plotting the convex hull only for values smaller 100
     if x.size <= 100:
         plot_convex_hull(p1, points, gift_wrapper_convex_hull)
         plot_convex_hull(p2, points, convex_hull_quickhull)
-        text_label.setText(f"\nGift Wrapper time:  {time_g} secs\n"
-                           f"Quickhull Time:  {time_q} secs ")
+        text_label.setText(f"\nExecution time for {len(x)}:"
+                           f"\nGift Wrapper time:  {time_g} secs"
+                           f"\nQuickhull Time:  {time_q} secs ")
     else:
-        text_label.setText(f"\nNo data points plotted - too many points to plot\n"
-                           f"\nGift Wrapper time:  {time_g} secs\n"
-                           f"Quickhull Time:  {time_q} secs ")
+        text_label.setText(f"\nNo data points plotted - too many points"
+                           f"\nExecution time for {len(x)} points: "
+                           f"\nGift Wrapper time:  {time_g} secs"
+                           f"\nQuickhull Time:  {time_q} secs "
+                           f"\nHulls are equal:  {hulls_are_equal}")
 
 
 # paints the line in step by step plotting, repaints discarded lines
@@ -700,7 +665,6 @@ def step_through():
 
     # Print complete hull - for beauty reasons
     elif current_plot == 2 and step_index_plot2 == len(steps_quickhull):
-        print("plot hull in p2")
         quickhull_hull = np.array(quickhull_hull)
         hull_x_step = quickhull_hull[:, 0]
         hull_y_step = quickhull_hull[:, 1]
@@ -708,7 +672,6 @@ def step_through():
         repaint_line_step(hull_x_step, hull_y_step, p, False)
 
     else:
-        print("getting into else ")
         if current_plot < 3:
             current_plot += 1
             step_index = 0

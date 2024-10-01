@@ -30,7 +30,7 @@ def generate_square(size, num_points):
 
 def generate_line(num_points):
     # Generate points on a line
-    x = np.linspace(-20, 20, num_points)
+    x = np.linspace(-100, 100, num_points)
     y = np.zeros(num_points)
     return np.column_stack((x, y))
 
@@ -44,21 +44,36 @@ def generate_random_point_file(num_points, output_file):
             f.write(f"{x:.6f}, {y:.6f}\n")
 
 
-def generate_file_from_specific_form(output_file, function, num_points, size):
+def generate_one_point_file(num_points, output_file):
     with open(output_file, 'w') as f:
         f.write(f"{num_points}\n")
-        points = function(size, num_points)
-        for point in points:
-            f.write(f"{point[0]:.6f}, {point[1]:.6f}\n")
+        for _ in range(num_points):
+            x = np.random.uniform(-100.0, 100.0)
+            y = np.random.uniform(-100.0, 100.0)
+            f.write(f"{x:.6f}, {y:.6f}\n")
 
 
-def generate_file_from_specific_form_one_argument(output_file, function, num_points):
+def generate_circle_file(num_points, output_file, size: int):
+    with open(output_file, 'w') as f:
+        angles = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
+        points = np.column_stack((size * np.cos(angles), size * np.sin(angles)))
+        f.write(f"{num_points}\n")
+        for index in range(num_points):
+            x = points[:, 0][index]
+            y = points[:, 1][index]
+            f.write(f"{x:.6f}, {y:.6f}\n")
+
+
+def generate_line_file(num_points, output_file):
     with open(output_file, 'w') as f:
         f.write(f"{num_points}\n")
-        points = function(num_points)
-        print(points)
-        for i in range(num_points):
-            f.write(f"{points[0]:.6f}, {points[1]:.6f}\n")
+        x = np.linspace(-100, 100, num_points)
+        y = np.zeros(num_points)
+        points = np.column_stack((x, y))
+        for index in range(num_points):
+            x = points[:, 0][index]
+            y = points[:, 1][index]
+            f.write(f"{x:.6f}, {y:.6f}\n")
 
 
 def read_points_from_file(filename):
@@ -70,7 +85,7 @@ def read_points_from_file(filename):
     if points[0].size != 2:
         raise ValueError("Each point must have two values (x, y).")
 
-    return points
+    return points, number_of_points
 
 
 def all_points_on_h_or_v_line(x: np.ndarray, y: np.ndarray) -> bool:
@@ -81,11 +96,17 @@ def all_points_on_h_or_v_line(x: np.ndarray, y: np.ndarray) -> bool:
 
 
 def measure_time(func, points):
-    start_time = time.perf_counter()
-    hull = func(points)
-    end_time = time.perf_counter()
-    print(f"Executed algorithm in {(end_time - start_time)} seconds.")
-    return (end_time - start_time), hull
+    try:
+        print(f"starting execution with {points.shape}")
+        start_time = time.perf_counter()
+        hull = func(points)
+        end_time = time.perf_counter()
+        print(f"Executed algorithm in {(end_time - start_time)} seconds.")
+        return (end_time - start_time), hull
+    except Exception as e:
+        print("Could not execute algorithm due to: ", e)
+        return 0, np.array([])
+
 
 
 def continue_or_finish():
@@ -97,33 +118,21 @@ def continue_or_finish():
 
 
 def get_points():
-    user_input = input(
-        "Read in file or generate random (Read File F, Generate Random R, Circle C, Square S, Line L, Point P):  ").strip().upper()
-    if user_input in ['R', 'G']:
+    while True:
+        user_input = input(
+            "Read in file or generate random (Read File F, Generate Random R):  ").strip().upper()
+        if user_input in ['R', 'G']:
+            if user_input == 'R':
+                user_input = input("Input file name - has to be absolute path!:  ").strip()
+                try:
+                    points, number_of_points = read_points_from_file(user_input)
+                    return points
+                except:
+                    print("Could not read file.  ")
 
-        if user_input == 'R':
-            user_input = input("Input file name - has to be absolute path!:  ").strip()
-            try:
-                points = read_points_from_file(user_input)
-                return points
-            except:
-                print("Could not read file.  ")
-
-        if user_input == 'G':
-            points_amount = int(input("How many points?  "))
-            if points_amount >= 0:
-                form = input(
-                    "What form? (Circle C, Square S, Line L, Point P, Random R): ").strip().upper()
-                if form == 'C':
-                    radius = int(input("Determine radius in positive number: "))
-                    return generate_circle(points_amount, abs(radius))
-                elif form == 'S':
-                    return generate_square(points_amount)
-                elif form == 'L':
-                    return generate_line(points_amount)
-                elif form == 'P':
-                    return generate_point(points_amount)
-                elif form == 'R':
+            if user_input == 'G':
+                points_amount = int(input("How many points?  "))
+                if points_amount >= 0:
                     return generate_random_points(points_amount)
 
 
@@ -151,3 +160,90 @@ def execute_algo_console():
                         continue
                     else:
                         break
+
+
+'''
+THESE WILL NOT RUN WITHOUT THE CORRECT FILES PROVIDED 
+
+'''
+
+
+def measure_time_on(func, number, index):
+    circle = f"circle_points_{number}_on_complexity_{index}.txt"
+    line = f"line_points_{number}_on_complexity_{index}.txt"
+    random = f"random_test_points_{number}_on_complexity_{index}.txt"
+    points, number_of_points = read_points_from_file(circle)
+    print("reading file from ")
+    print(f"random_test_points_{number}_on_complexity_{index}.txt")
+    start_time = time.perf_counter()
+    hull = func(points)
+    end_time = time.perf_counter()
+    print(f"Executed algorithm in {(end_time - start_time)} seconds.")
+    return end_time - start_time
+
+def run_o_complexity_comparison(filename):
+    n = [100, 1000, 10000, 100000, 1000000, 10000000]  # , 100000000]
+    runs = 10
+    results = {}
+    for number in n:
+        if number == 100000000:
+            runs = 8
+
+        result = sum(run for index in range(runs) for run in
+                     [measure_time_on(Quickhull.quick_hull, number, index)]) / runs
+        results[number] = result
+        print(result)
+
+    with open(filename, 'w') as file:
+        file.write("Quickhull O(n) complexity\n")
+        for n, time in results.items():
+            file.write(f'n = {n}, time = {time}\n')
+    return results
+
+
+def run_o_complexity_comparison_giftwrapper(filename):
+    n = [100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
+    runs = 10
+    results = {}
+    index = 0
+    for number in n:
+        if number == 100000000:
+            runs = 2
+        generate_test_files_random(number)
+        result = sum(run for index in range(runs) for run in
+                     [measure_time_on(GiftWrapper.gift_wrapping_algorithm, number, index)]) / runs
+        results[number] = result
+        print(result)
+        index += 1
+    with open(filename, 'w') as file:
+        file.write("Giftwrapper O(n) complexity\n")
+        for n, time in results.items():
+            file.write(f'n = {n}, time = {time}\n')
+    return results
+
+
+def generate_files():
+    n = [100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
+    results = {}
+    index = 0
+    for number in n:
+        generate_test_files_circle(number)
+        # generate_test_files_line(number)
+        index += 1
+
+    return results
+
+
+def generate_test_files_random(number):
+    for index in range(10):
+        generate_random_point_file(number, f"random_test_points_{number}_on_complexity_{index}.txt")
+
+
+def generate_test_files_circle(number):
+    for index in range(10):
+        generate_circle_file(number, f"circle_points_{number}_on_complexity_{index}.txt", number)
+
+
+def generate_test_files_line(number):
+    for index in range(10):
+        generate_line_file(number, f"line_points_{number}_on_complexity_{index}.txt")
