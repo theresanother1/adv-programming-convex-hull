@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# redundant data folder
+my_data
+
+# executable file
+executable_gui_and_console
+
 # Distribution / packaging
 .Python
 build/

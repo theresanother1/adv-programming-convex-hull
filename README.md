@@ -175,3 +175,8 @@ channels:
     - pynvim==0.5.0
     - tomlkit==0.13.2
       prefix: /home/salome/miniconda3/envs/ml-env
+
+Additional Info:
+
+- The GUI will only accept points <= 10000, if you want to see execution times for more points, please start the console
+  application in main.py. The GUI is in aprg_Proj2-Gr7_202409xx.py. 

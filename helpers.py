@@ -120,9 +120,9 @@ def continue_or_finish():
 def get_points():
     while True:
         user_input = input(
-            "Read in file or generate random (Read File F, Generate Random R):  ").strip().upper()
-        if user_input in ['R', 'G']:
-            if user_input == 'R':
+            "Read in file or generate random (Read File F, Generate Random G):  ").strip().upper()
+        if user_input in ['F', 'G']:
+            if user_input == 'F':
                 user_input = input("Input file name - has to be absolute path!:  ").strip()
                 try:
                     points, number_of_points = read_points_from_file(user_input)
